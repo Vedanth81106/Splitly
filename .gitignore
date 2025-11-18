@@ -1,0 +1,40 @@
+# ==========================
+# BACKEND (Spring Boot / Java)
+# ==========================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/help.md
+backend/**/*.class
+
+# Ignore the file containing your DB password and JWT key
+backend/src/main/resources/application.properties
+
+# ==========================
+# FRONTEND (React / Node)
+# ==========================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ==========================
+# IDE & SYSTEM FILES (Global)
+# ==========================
+# IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
