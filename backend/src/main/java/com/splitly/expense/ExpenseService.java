@@ -92,6 +92,9 @@ public class ExpenseService {
 
             expenseShareRepository.save(share);
         }else{
+
+            BigDecimal totalFriendShares = BigDecimal.ZERO;
+
             for(ExpenseRequest.Share share : request.getShares()){
 
                 User shareUser = userRepository.findById(share.getUserId())
@@ -104,6 +107,21 @@ public class ExpenseService {
                         .build();
 
                 expenseShareRepository.save(expenseShare);
+
+                totalFriendShares = totalFriendShares.add(share.getAmountOwed());
+            }
+
+            BigDecimal creatorShareAmount = expense.getAmount().subtract(totalFriendShares);
+
+            if (creatorShareAmount.compareTo(BigDecimal.ZERO) > 0) {
+                var creatorShare = ExpenseShare.builder()
+                        .expense(expense)
+                        .user(user)
+                        .amountOwed(creatorShareAmount)
+                        .status(PaymentStatus.PAID) // Creator paid the bill if there was a remainder
+                        .build();
+
+                expenseShareRepository.save(creatorShare);
             }
         }
     }

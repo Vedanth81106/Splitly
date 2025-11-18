@@ -66,7 +66,7 @@ const DashboardPage = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-bold text-text-primary">  
-                      {expense.title.charAt(0).toUpperCase() + expense.title.slice(1)}
+                      {expense.title}
                     </h3>
                     <p className="text-m text-text-primary">
                       {expense.description}
