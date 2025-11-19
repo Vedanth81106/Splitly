@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { createExpense } from '../services/expenseService';
+import { createExpense, editExpense } from '../services/expenseService';
 import { searchUsers } from '../services/userService';
-import { X, Search, Plus } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth'; 
+import { X, Search } from 'lucide-react';
 
-const AddExpenseForm = ({ onSuccess, onClose }) => {
+const AddExpenseForm = ({ onSuccess, onClose, expenseToEdit }) => {
+  const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -16,12 +16,9 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
   const [selectedFriends, setSelectedFriends] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
- // When a user types in the search bar, we don't want to hammer your backend API with a request for every single letter
- //So we only accept the input every 500 ms
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchQuery.length > 1) {
-        // Only call the API if the user stops typing for 300ms
         setIsSearching(true);
         try {
           const response = await searchUsers(searchQuery);
@@ -36,17 +33,32 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
       }
     }, 500); 
 
-    // If the user types again BEFORE 500ms is up then clear the timer
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const addFriend = (user) => {
-    // prevent adding duplicates
-    if (!selectedFriends.find(f => f.id === user.id)) {
-      setSelectedFriends([...selectedFriends, user]);//... operaotr is spread operator and it copies 
-      // all the old selectedFriends to the new selectedFriends and ,user adds a new user to the end
+  useEffect(() => {
+    if (expenseToEdit) {
+      setTitle(expenseToEdit.title || '');
+      setAmount(expenseToEdit.amount);
+      setDescription(expenseToEdit.description);
+      setDate(expenseToEdit.date);
+      setCategory(expenseToEdit.category);
+      setPaymentMethod(expenseToEdit.paymentMethod);
+    
+      if (expenseToEdit.shares) {
+        const friends = expenseToEdit.shares
+          .filter(s => s.status !== 'PAID') 
+          .map(s => ({ id: s.userId, username: s.username }));
+        setSelectedFriends(friends);
+      }
     }
-    setSearchQuery('');//once freind is added the search query is reset
+  }, [expenseToEdit]);
+
+  const addFriend = (user) => {
+    if (!selectedFriends.find(f => f.id === user.id)) {
+      setSelectedFriends([...selectedFriends, user]);
+    }
+    setSearchQuery('');
     setSearchResults([]);
   };
 
@@ -61,7 +73,6 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
       let sharesList = [];
 
       if (selectedFriends.length > 0) {
-        // Total people = friends + user (1)
         const splitCount = selectedFriends.length + 1; 
         const splitAmount = (totalAmount / splitCount).toFixed(2);
 
@@ -69,17 +80,23 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
           userId: friend.id,
           amountOwed: Number(splitAmount)
         }));
-
       }
 
-      await createExpense({
+      const expenseData = {
+        title,
         amount: totalAmount,
         description,
         date,
         category,
         paymentMethod,
         shares: sharesList 
-      });
+      };
+      
+      if (expenseToEdit) {
+        await editExpense(expenseToEdit.id, expenseData);
+      } else {
+        await createExpense(expenseData);
+      }
       
       if (onSuccess) onSuccess();
       if (onClose) onClose();
@@ -97,28 +114,40 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
           <X size={24} />
         </button>
 
-        <h3 className="text-xl font-bold text-text-primary mb-4">Add New Expense</h3>
+        <h3 className="text-xl font-bold text-text-primary mb-4">
+            {expenseToEdit ? 'Edit Expense' : 'Add New Expense'}
+        </h3>
         
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-4 mb-4">
             
-            {/* Amount and Description */}
+            <div>
+              <label className="block text-sm font-bold text-text-primary mb-1">Title</label>
+              <input 
+                type="text" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-primary" 
+                required 
+                placeholder="e.g. Dinner"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-bold text-text-primary mb-1">Amount</label>
               <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
                 className="w-full p-2 border rounded focus:ring-2 focus:ring-primary" required />
             </div>
+
             <div>
               <label className="block text-sm font-bold text-text-primary mb-1">Description</label>
               <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-primary" required />
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-primary"  />
             </div>
 
-            {/* --- SPLIT SECTION --- */}
             <div className="border-t border-gray-200 pt-4 mt-2">
               <label className="block text-sm font-bold text-text-primary mb-2">Split with (Optional)</label>
               
-              {/* Selected Friends Chips */}
               <div className="flex flex-wrap gap-2 mb-2">
                 {selectedFriends.map(friend => (
                   <div key={friend.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-2">
@@ -130,7 +159,6 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
                 ))}
               </div>
 
-              {/* Search Bar */}
               <div className="relative">
                 <div className="flex items-center border rounded p-2 focus-within:ring-2 focus-within:ring-primary bg-white">
                   <Search size={18} className="text-gray-400 mr-2" />
@@ -143,7 +171,6 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
                   />
                 </div>
 
-                {/* Search Results Dropdown */}
                 {searchResults.length > 0 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
                     {searchResults.map(user => (
@@ -162,7 +189,6 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
               </div>
             </div>
 
-            {/* Categories */}
             <div className="grid grid-cols-2 gap-4">
                <div>
                 <label className="block text-sm font-bold text-text-primary mb-1">Date</label>
@@ -196,7 +222,7 @@ const AddExpenseForm = ({ onSuccess, onClose }) => {
           </div>
 
           <button type="submit" className="mt-2 w-full bg-accent text-text-primary font-bold py-3 rounded hover:opacity-90 shadow-sm">
-            Add Expense
+            {expenseToEdit ? 'Update Expense' : 'Add Expense'}
           </button>
         </form>
       </div>

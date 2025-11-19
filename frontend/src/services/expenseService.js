@@ -22,6 +22,18 @@ export const createExpense = (expenseData) => {
   });
 };
 
+export const editExpense = (expenseId, expenseData) => {
+  return apiClient.put(`/expenses/${expenseId}`, expenseData, {
+    headers: getAuthHeaders()
+  });
+};
+
+export const payShare = (shareId) => {
+  return apiClient.patch(`/expenses/share/${shareId}/pay`,{}, {
+    headers: getAuthHeaders()
+  })
+}
+
 export const deleteExpense = (expenseId) => {
     return apiClient.delete(`/expenses/${expenseId}`,{
         headers:getAuthHeaders()

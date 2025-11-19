@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getAllExpenses, deleteExpense } from '../services/expenseService';
+import { getAllExpenses, deleteExpense, payShare } from '../services/expenseService';
 import AddExpenseForm from '../components/AddExpenseForm';
-import { Plus, Receipt, ScanLine, Trash } from 'lucide-react';
+import { Plus, Receipt, ScanLine, Trash, Edit } from 'lucide-react';
 
 const DashboardPage = () => {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [currentExpense, setCurrentExpense] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -20,9 +21,23 @@ const DashboardPage = () => {
     }
   };
 
+  const handleEdit = (expense) => {
+    setCurrentExpense(expense);
+    setIsFormOpen(true);
+  };
+
   const handleDelete = async (id) => {
     try {
       await deleteExpense(id);
+      fetchData();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleSharePay = async (shareId) => {
+    try {
+      await payShare(shareId);
       fetchData();
     } catch (error) {
       console.error(error);
@@ -65,35 +80,53 @@ const DashboardPage = () => {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-xl font-bold text-text-primary">  
-                      {expense.title}
+                    <h3 className="text-xl font-bold text-text-primary">
+                      {expense.title 
+                        ? expense.title.charAt(0).toUpperCase() + expense.title.slice(1) 
+                        : (expense.description || 'Untitled')}
                     </h3>
+                    
                     <p className="text-m text-text-primary">
-                      {expense.description}
-                    </p>  
-                    <p className="text-xl font-bold text-primary">
-                      {expense.amount.toFixed(2)}
+                       {expense.description}
                     </p>
+
                     <p className="text-sm text-gray-500 mt-1 mb-2">
-                      {new Date(expense.date).toLocaleDateString()} • {expense.category} • {expense.paymentMethod.replace('_', ' ')}
+                      {new Date(expense.date).toLocaleDateString()} • 
+                      {expense.category ? expense.category.charAt(0) + expense.category.slice(1).toLowerCase() : 'General'} • 
+                      {expense.paymentMethod ? expense.paymentMethod.replace('_', ' ') : 'Cash'}
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => handleDelete(expense.id)}
-                    className="flex flex-col items-end gap-2 text-gray-400 hover:text-accent hover:scale-150 cursor-pointer transition-all ease-in-out duration-300 p-1 rounded-full hover:bg-red-50"
-                    title="Delete Expense"
-                  >
-                    <Trash size={20} />
-                  </button>
-                  
+                  <div className="flex gap-2 items-start">
+                    <span className="text-xl font-bold text-primary mr-2">
+                      ${expense.amount.toFixed(2)}
+                    </span>
+                    
+                    <button
+                      onClick={() => handleEdit(expense)}
+                      className="text-gray-400 hover:text-blue-500 transition-colors p-1 rounded-full hover:bg-blue-50"
+                      title="Edit Expense"
+                    >
+                      <Edit size={18} />
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(expense.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
+                      title="Delete Expense"
+                    >
+                      <Trash size={18} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <div className="flex flex-wrap gap-2">
-                    {expense.shares.map((share) => (
+                    {expense.shares && expense.shares.map((share) => (
                       <button
-                        key={share.userId}
+                        key={share.shareId}
+                        onClick={() => share.status !== 'PAID' && handleSharePay(share.shareId)}
+                        disabled={share.status === 'PAID'}
                         className={`px-3 py-1 text-xs rounded-full font-bold border transition-all ${
                           share.status === 'PAID'
                             ? 'bg-green-100 text-green-700 border-green-200 cursor-default'
@@ -127,6 +160,7 @@ const DashboardPage = () => {
             <button
               className="flex items-center gap-2 bg-white text-text-primary px-4 py-2 rounded-lg shadow-lg hover:bg-gray-50 transition-all"
               onClick={() => {
+                setCurrentExpense(null);
                 setIsFormOpen(true);
                 setIsMenuOpen(false);
               }}
@@ -151,11 +185,16 @@ const DashboardPage = () => {
 
       {isFormOpen && (
         <AddExpenseForm
+          expenseToEdit={currentExpense}
           onSuccess={() => {
             fetchData();
             setIsFormOpen(false);
+            setCurrentExpense(null);
           }}
-          onClose={() => setIsFormOpen(false)}
+          onClose={() => {
+            setIsFormOpen(false);
+            setCurrentExpense(null);
+          }}
         />
       )}
 

@@ -38,6 +38,7 @@ public class ExpenseService {
                 .map(share -> {
 
                     return ExpenseResponse.ShareResponse.builder()
+                            .shareId(share.getId())
                             .userId(share.getUser().getId())
                             .amountOwed(share.getAmountOwed())
                             .username(share.getUser().getUsername())

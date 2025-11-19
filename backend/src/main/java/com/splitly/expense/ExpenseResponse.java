@@ -32,6 +32,7 @@ public class ExpenseResponse {
     @Data
     @Builder
     public static class ShareResponse {
+        private UUID shareId;
         private UUID userId;
         private String username;
         private PaymentStatus status;
